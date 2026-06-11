@@ -32,6 +32,52 @@ Model weights download automatically from HuggingFace Hub on first use.
 
 ---
 
+## Local Web Interface
+
+Install the optional web server dependencies, plus any language extras you need:
+
+```bash
+pip install -e ".[web,zh]"
+```
+
+Start the local server:
+
+```bash
+kokoro-mlx-server
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000). The server only listens
+on `127.0.0.1` and is intended for local use.
+
+Choose a different port with a command-line option:
+
+```bash
+kokoro-mlx-server --port 9000
+```
+
+Or use the `KOKORO_MLX_PORT` environment variable:
+
+```bash
+KOKORO_MLX_PORT=9000 kokoro-mlx-server
+```
+
+The command-line option takes precedence over the environment variable. HTTP API
+documentation is available at `/docs` while the server is running.
+
+Generate a WAV file directly through the API:
+
+```bash
+curl -o speech.wav \
+  -H "Content-Type: application/json" \
+  -d '{"text":"你好，欢迎使用语音合成。","voice":"zf_xiaobei","language":"zh"}' \
+  http://127.0.0.1:8000/api/speech
+```
+
+Only one synthesis request runs at a time. If another request is already using
+the model, the server returns HTTP `503`; retry after the active request finishes.
+
+---
+
 ## Features
 
 - **On-device** via MLX. No server, no network during inference.
@@ -250,6 +296,18 @@ python -m pytest tests/ -v
 ```
 
 Skip model-loading tests with `-m "not slow"`.
+
+## macOS Release
+
+For a signed and notarized macOS build, use the one-shot packaging entrypoint:
+
+```bash
+NOTARY_PROFILE=AC_PASSWORD packaging/release.sh
+```
+
+The script checks the Developer ID certificate, validates the `notarytool`
+profile, builds the app, signs the nested binaries, runs the local review
+checks, then notarizes and staples the final DMG.
 
 ---
 
