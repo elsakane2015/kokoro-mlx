@@ -53,3 +53,8 @@ htmlcov/
 *.wav
 *.mp3
 *.flac
+
+# Generated macOS packaging outputs
+.buildnumber
+release/
+releases/

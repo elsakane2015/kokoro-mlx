@@ -26,7 +26,23 @@ When `KOKORO_MODEL_SOURCE` is omitted, the build helper downloads the model
 from Hugging Face. The prepared model keeps the weights, model metadata and
 all 54 safetensors voices while removing duplicate `.pt` files and samples.
 
-## One-shot Release
+## One-shot Build
+
+The main entrypoint supports two modes:
+
+```bash
+packaging/release.sh --local
+packaging/release.sh --release
+```
+
+- `--local` builds an unsigned App and DMG for fast local testing.
+- `--release` builds, signs, notarizes, and staples the distributable bundle.
+- If no flag is provided, the script uses the signed release flow.
+
+Both modes increment the build number automatically and write artifacts into a
+new versioned `releases/vX.Y.Z-bNNN/` directory.
+
+### Signed Release
 
 ```bash
 NOTARY_PROFILE=PROFILE_NAME packaging/release.sh
@@ -40,6 +56,16 @@ This command performs the full release flow:
 4. Signs the App and nested binaries.
 5. Runs the local review checks.
 6. Rebuilds, signs, notarizes, staples, and validates the DMG.
+
+### Local Unsigned Build
+
+```bash
+packaging/release.sh --local
+```
+
+This skips the signing, review, and notarization steps. It is the preferred
+path for ordinary local testing because it avoids the large Apple upload and
+still produces a DMG that matches the app bundle built on disk.
 
 ## Sign and Create DMG
 

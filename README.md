@@ -299,7 +299,16 @@ Skip model-loading tests with `-m "not slow"`.
 
 ## macOS Release
 
-For a signed and notarized macOS build, use the one-shot packaging entrypoint:
+Use the one-shot packaging entrypoint for macOS builds.
+
+For routine local testing, build an unsigned app and DMG without uploading to
+Apple:
+
+```bash
+packaging/release.sh --local
+```
+
+For a signed and notarized release build, use:
 
 ```bash
 NOTARY_PROFILE=AC_PASSWORD packaging/release.sh
@@ -307,7 +316,8 @@ NOTARY_PROFILE=AC_PASSWORD packaging/release.sh
 
 The script checks the Developer ID certificate, validates the `notarytool`
 profile, builds the app, signs the nested binaries, runs the local review
-checks, then notarizes and staples the final DMG.
+checks, then notarizes and staples the final DMG. Build numbers are advanced
+automatically, so each run produces a new versioned output directory.
 
 ---
 

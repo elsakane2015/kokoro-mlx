@@ -127,6 +127,122 @@ class TestGenerateStream:
         assert full.dtype == streamed.dtype
 
 
+def test_generate_splits_overlong_single_sentence() -> None:
+    from kokoro_mlx.generate import _INTER_CHUNK_PAUSE_SECONDS, generate
+    from kokoro_mlx.phonemize import Phonemizer
+
+    class StubModel:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def forward(self, phonemes: str, ref_s: np.ndarray, speed: float = 1.0) -> np.ndarray:
+            self.calls.append(phonemes)
+            return np.array([0.0, 0.0], dtype=np.float32)
+
+    class StubVoiceManager:
+        def load_voice(self, voice: str) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+        def get_style(self, ref_s: np.ndarray, length: int) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+    phonemizer = Phonemizer.__new__(Phonemizer)
+    phonemizer._vocab = {char: index + 1 for index, char in enumerate("abcdefghijklmnopqrstuvwxyz ")}
+    phonemizer._language = "en-us"
+    phonemizer._g2p = object()
+    phonemizer._phonemes_for_text = lambda text: text  # type: ignore[method-assign]
+
+    model = StubModel()
+    voice_manager = StubVoiceManager()
+    config = object()
+    pause_samples = int(round(_INTER_CHUNK_PAUSE_SECONDS * 24000))
+
+    audio = generate("a" * 1200, model, config, voice_manager, phonemizer=phonemizer)
+
+    assert len(model.calls) > 1
+    assert isinstance(audio, np.ndarray)
+    assert audio.dtype == np.float32
+    assert audio.shape[0] == 2 * len(model.calls) + pause_samples * (len(model.calls) - 1)
+
+
+def test_generate_splits_overlong_phoneme_output() -> None:
+    from kokoro_mlx.generate import _INTER_CHUNK_PAUSE_SECONDS, generate
+    from kokoro_mlx.phonemize import Phonemizer
+
+    class StubModel:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def forward(self, phonemes: str, ref_s: np.ndarray, speed: float = 1.0) -> np.ndarray:
+            self.calls.append(phonemes)
+            return np.array([1.0], dtype=np.float32)
+
+    class StubVoiceManager:
+        def load_voice(self, voice: str) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+        def get_style(self, ref_s: np.ndarray, length: int) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+    phonemizer = Phonemizer.__new__(Phonemizer)
+    phonemizer._vocab = {char: index + 1 for index, char in enumerate("abcdefghijklmnopqrstuvwxyz ")}
+    phonemizer._language = "en-us"
+    phonemizer._g2p = object()
+    phonemizer._token_count = lambda text: 1  # type: ignore[method-assign]
+    phonemizer._phonemes_for_text = lambda text: text  # type: ignore[method-assign]
+
+    model = StubModel()
+    voice_manager = StubVoiceManager()
+    config = object()
+    pause_samples = int(round(_INTER_CHUNK_PAUSE_SECONDS * 24000))
+
+    audio = generate("a" * 1200, model, config, voice_manager, phonemizer=phonemizer)
+
+    assert len(model.calls) > 1
+    assert isinstance(audio, np.ndarray)
+    assert audio.dtype == np.float32
+    assert audio.shape[0] == len(model.calls) + pause_samples * (len(model.calls) - 1)
+
+
+def test_generate_inserts_pause_for_newlines() -> None:
+    from kokoro_mlx.generate import _SINGLE_NEWLINE_PAUSE_SECONDS, generate
+
+    class StubModel:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def forward(self, phonemes: str, ref_s: np.ndarray, speed: float = 1.0) -> np.ndarray:
+            self.calls.append(phonemes)
+            return np.array([1.0], dtype=np.float32)
+
+    class StubVoiceManager:
+        def load_voice(self, voice: str) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+        def get_style(self, ref_s: np.ndarray, length: int) -> np.ndarray:
+            return np.zeros((1, 256), dtype=np.float32)
+
+    class StubPhonemizer:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def phonemize_long(self, text: str) -> list[tuple[str, list[int]]]:
+            self.calls.append(text)
+            return [(text.upper(), [1, 2, 3])]
+
+    model = StubModel()
+    voice_manager = StubVoiceManager()
+    phonemizer = StubPhonemizer()
+    config = object()
+    pause_samples = int(round(_SINGLE_NEWLINE_PAUSE_SECONDS * 24000))
+
+    audio = generate("第一行\n第二行", model, config, voice_manager, phonemizer=phonemizer)
+
+    assert phonemizer.calls == ["第一行", "第二行"]
+    assert len(model.calls) == 2
+    assert audio.shape[0] == 2 + pause_samples
+
+
 # ---------------------------------------------------------------------------
 # save_wav()
 # ---------------------------------------------------------------------------

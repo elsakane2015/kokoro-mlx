@@ -1,0 +1,8 @@
+APP_NAME = Kokoro MLX
+BUNDLE_ID = com.litotime.kokoromlx
+APP_VERSION = 0.1.2
+MIN_MACOS_VERSION = 15.0
+BACKEND_NAME = kokoro-mlx-backend
+DEFAULT_PORT = 8000
+DEVELOPMENT_TEAM = HCDD4TQBT8
+CODE_SIGN_IDENTITY = Developer ID Application: Xuefeng Huang (HCDD4TQBT8)

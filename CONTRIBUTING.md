@@ -38,7 +38,8 @@ src/kokoro_mlx/
 ├── phonemize.py    # G2P wrapper (misaki), sentence chunking at 510-token limit
 ├── voices.py       # Voice loading, style vector management
 ├── playback.py     # Audio playback and WAV export
-└── config.py       # KokoroConfig, ISTFTNetConfig, PLBertConfig dataclasses
+├── config.py       # KokoroConfig, ISTFTNetConfig, PLBertConfig dataclasses
+└── web/            # Optional local FastAPI server and browser interface
 ```
 
 Key constraint: **no PyTorch, no transformers.** The entire inference pipeline is implemented in pure MLX + numpy. Keep it that way.

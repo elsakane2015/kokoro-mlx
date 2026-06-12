@@ -45,7 +45,17 @@ audio = ["sounddevice>=0.4.0"]
 ja = ["misaki[ja]>=0.9.4"]
 zh = ["misaki[zh]>=0.9.4"]
 multilingual = ["misaki[ja,zh]>=0.9.4"]
-dev = ["pytest"]
+web = [
+    "fastapi>=0.115.0,<1",
+    "uvicorn>=0.34.0,<1",
+]
+dev = [
+    "httpx>=0.28.0,<1",
+    "pytest",
+]
+
+[project.scripts]
+kokoro-mlx-server = "kokoro_mlx.web.cli:main"
 
 [tool.ruff]
 target-version = "py310"

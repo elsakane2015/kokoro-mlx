@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>kokoro-mlx 本地语音合成</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">LOCAL TTS</p>
+        <h1>kokoro-mlx</h1>
+      </div>
+      <div class="server-status" id="server-status" data-state="loading">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="server-status-text">正在连接本地模型</span>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="composer" aria-labelledby="composer-title">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">语音内容</p>
+            <h2 id="composer-title">输入要合成的文本</h2>
+          </div>
+          <span class="character-count"><strong id="character-count">0</strong> / 5000</span>
+        </div>
+
+        <form id="speech-form">
+          <label class="sr-only" for="text">要合成的文本</label>
+          <textarea
+            id="text"
+            name="text"
+            maxlength="5000"
+            required
+            placeholder="在这里输入中文、英文或其他支持的语言……"
+          >你好，欢迎使用 Kokoro MLX 本地语音合成。</textarea>
+
+          <div class="primary-actions">
+            <button class="primary-button" id="generate-button" type="submit">
+              <span class="button-label">生成语音</span>
+              <span class="button-progress" aria-hidden="true"></span>
+            </button>
+            <p class="action-hint">音频只在这台 Mac 上生成，不会上传文本。</p>
+          </div>
+        </form>
+
+        <section class="result-panel" id="result-panel" data-state="empty" aria-live="polite">
+          <div class="result-copy">
+            <p class="section-kicker">生成结果</p>
+            <h3 id="result-title">等待生成</h3>
+            <p id="result-message">设置右侧参数，然后点击“生成语音”。</p>
+          </div>
+          <audio id="audio-player" controls hidden></audio>
+          <a class="download-button" id="download-button" download="speech.wav" hidden>下载 WAV</a>
+        </section>
+      </section>
+
+      <aside class="settings" aria-labelledby="settings-title">
+        <div class="section-heading compact">
+          <div>
+            <p class="section-kicker">合成参数</p>
+            <h2 id="settings-title">声音设置</h2>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="voice">音色</label>
+          <select id="voice" name="voice" form="speech-form" disabled>
+            <option>正在加载音色…</option>
+          </select>
+          <p class="field-note" id="voice-note">音色会自动选择对应语言。</p>
+        </div>
+
+        <div class="field">
+          <label for="language">语言覆盖</label>
+          <select id="language" name="language" form="speech-form">
+            <option value="">根据音色自动判断</option>
+            <option value="zh">普通话</option>
+            <option value="en-us">美式英语</option>
+            <option value="en-gb">英式英语</option>
+            <option value="ja">日语</option>
+            <option value="es">西班牙语</option>
+            <option value="fr">法语</option>
+            <option value="hi">印地语</option>
+            <option value="it">意大利语</option>
+            <option value="pt-br">葡萄牙语</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="label-row">
+            <label for="speed">语速</label>
+            <output id="speed-value" for="speed">1.00×</output>
+          </div>
+          <input id="speed" name="speed" form="speech-form" type="range" min="0.25" max="4" step="0.05" value="1">
+          <div class="range-labels" aria-hidden="true">
+            <span>慢</span>
+            <span>快</span>
+          </div>
+        </div>
+
+        <fieldset class="field">
+          <legend>采样率</legend>
+          <div class="segmented-control">
+            <label>
+              <input type="radio" name="sample_rate" value="24000" form="speech-form" checked>
+              <span>24 kHz</span>
+            </label>
+            <label>
+              <input type="radio" name="sample_rate" value="48000" form="speech-form">
+              <span>48 kHz</span>
+            </label>
+          </div>
+          <p class="field-note">48 kHz 文件更大，并会增加处理时间。</p>
+        </fieldset>
+
+        <div class="local-address">
+          <span>本地地址</span>
+          <code id="local-address"></code>
+        </div>
+      </aside>
+    </main>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

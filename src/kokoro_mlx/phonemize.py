@@ -112,7 +112,8 @@ class Phonemizer:
         if language == "ja":
             from misaki import ja
 
-            return ja.JAG2P()
+            # pyopenjtalk ships its dictionary and remains fully offline.
+            return ja.JAG2P(version="pyopenjtalk")
         if language == "zh":
             from misaki import zh
 
@@ -132,6 +133,80 @@ class Phonemizer:
         ids = [self._vocab[c] for c in phonemes if c in self._vocab]
         return [0, *ids, 0]
 
+    def _token_count(self, text: str) -> int:
+        """Count model tokens produced by *text* after phonemization."""
+        phonemes = self._phonemes_for_text(text)
+        return self._token_count_from_phonemes(phonemes)
+
+    def _token_count_from_phonemes(self, phonemes: str) -> int:
+        """Count model tokens already present in a phoneme string."""
+        return len(self._ids_from_phonemes(phonemes)) - 2
+
+    def _split_text_to_limit(self, text: str, max_tokens: int) -> list[str]:
+        """Split *text* so each chunk stays within the model context window."""
+        text = text.strip()
+        if not text:
+            return []
+
+        if self._token_count(text) <= max_tokens:
+            return [text]
+
+        words = re.findall(r"\S+\s*", text)
+        if len(words) <= 1:
+            chunks: list[str] = []
+            current = ""
+            for char in text:
+                candidate = current + char
+                if current and self._token_count(candidate) > max_tokens:
+                    if current.strip():
+                        chunks.append(current.strip())
+                    current = char
+                else:
+                    current = candidate
+            if current.strip():
+                chunks.append(current.strip())
+            return chunks
+
+        chunks: list[str] = []
+        current = ""
+        for word in words:
+            candidate = current + word
+            if current and self._token_count(candidate) > max_tokens:
+                chunks.extend(self._split_text_to_limit(current, max_tokens))
+                current = word
+            else:
+                current = candidate
+
+        if current.strip():
+            chunks.extend(self._split_text_to_limit(current, max_tokens) if self._token_count(current) > max_tokens else [current.strip()])
+
+        return chunks
+
+    def _split_phonemes_to_limit(self, phonemes: str, max_tokens: int) -> list[str]:
+        """Split a phoneme string so each chunk stays within the model context window."""
+        phonemes = phonemes.strip()
+        if not phonemes:
+            return []
+
+        if self._token_count_from_phonemes(phonemes) <= max_tokens:
+            return [phonemes]
+
+        chunks: list[str] = []
+        current = ""
+        for char in phonemes:
+            candidate = current + char
+            if current and self._token_count_from_phonemes(candidate) > max_tokens:
+                if current.strip():
+                    chunks.append(current.strip())
+                current = char
+            else:
+                current = candidate
+
+        if current.strip():
+            chunks.append(current.strip())
+
+        return chunks
+
     def phonemize(self, text: str) -> tuple[str, list[int]]:
         """Convert *text* to a phoneme string and token ID sequence.
 
@@ -147,8 +222,7 @@ class Phonemizer:
         return phonemes, token_ids
 
     def phonemize_long(self, text: str) -> list[tuple[str, list[int]]]:
-        """Phonemize *text*, chunking at sentence boundaries when the phoneme
-        sequence would exceed the 512-token context window.
+        """Phonemize *text* and split it to stay within the 512-token limit.
 
         Returns a list of ``(phoneme_string, token_ids)`` tuples, one per
         chunk.
@@ -166,21 +240,21 @@ class Phonemizer:
                 continue
 
             candidate = " ".join(current_sentences + [sentence])
-            phonemes = self._phonemes_for_text(candidate)
-            vocab_ids = [self._vocab[c] for c in phonemes if c in self._vocab]
-
-            if len(vocab_ids) > _MAX_TOKENS and current_sentences:
+            if self._token_count(candidate) > _MAX_TOKENS and current_sentences:
                 # Flush the current accumulation before adding the new sentence.
                 flush_text = " ".join(current_sentences)
                 ph = self._phonemes_for_text(flush_text)
-                chunks.append((ph, self._ids_from_phonemes(ph)))
+                for chunk in self._split_phonemes_to_limit(ph, _MAX_TOKENS):
+                    chunks.append((chunk, self._ids_from_phonemes(chunk)))
                 current_sentences = [sentence]
             else:
                 current_sentences.append(sentence)
 
         if current_sentences:
             flush_text = " ".join(current_sentences)
-            ph = self._phonemes_for_text(flush_text)
-            chunks.append((ph, self._ids_from_phonemes(ph)))
+            for part in self._split_text_to_limit(flush_text, _MAX_TOKENS):
+                ph = self._phonemes_for_text(part)
+                for chunk in self._split_phonemes_to_limit(ph, _MAX_TOKENS):
+                    chunks.append((chunk, self._ids_from_phonemes(chunk)))
 
         return chunks
